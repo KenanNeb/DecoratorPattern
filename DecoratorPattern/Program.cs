@@ -17,7 +17,7 @@ class FileDataSource : IDataSource
 
     public FileDataSource()
     {
-        _fileName = "Textbox";
+        _fileName = "Notepad";
         _path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), _fileName + ".txt");
     }
 
@@ -81,7 +81,7 @@ class FileDataSource : IDataSource
         public CompressionDecorator(IDataSource source) : base(source) { }
         public string CompressString(string text)
         {
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Textbox.txt");
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Notepad.txt");
             FileInfo fileToCompress = new(path);
             using (FileStream originalFileStream = fileToCompress.OpenRead())
             {
@@ -102,7 +102,7 @@ class FileDataSource : IDataSource
         }
         public string DecompressString()
         {
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "word.txt"+ ".gz");
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Notepad.txt" + ".gz");
 
             try
             {
@@ -147,6 +147,7 @@ class FileDataSource : IDataSource
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Ehter the data you want to write your Textbox:\n");
+            Console.WriteLine("Please after writing press enter 2 times for program poperly work!!!");
             var data = Console.ReadLine();
             IDataSource dataSource = new FileDataSource();
             dataSource.WriteData(data);
@@ -157,7 +158,9 @@ class FileDataSource : IDataSource
             input = Console.ReadLine();
             char c = char.Parse(input);
             while (c != 'e')
-            {                
+            {
+                Console.ReadKey();
+                Console.Clear();
                 if (c == '1')
                 {
                    dataSource = new EncryptionDecorator(dataSource);
@@ -169,7 +172,7 @@ class FileDataSource : IDataSource
                 {
                     try
                     {
-                        dataSource = new CompressionDecorator(dataSource);
+                        dataSource = new CompressionDecorator(dataSource);                        
                         dataSource.WriteData(data);
                         Console.WriteLine(dataSource.ReadData());
                         Console.WriteLine("Data successfully compressed!");
@@ -183,10 +186,9 @@ class FileDataSource : IDataSource
                 }
                 else
                 {
-                  Console.WriteLine("This option doenot exist please try again!");
+                  Console.WriteLine("");
                 }
-                Console.ReadKey();
-                Console.Clear();
+               
                 Words();
                 input = String.Empty;
                 input = Console.ReadLine();
