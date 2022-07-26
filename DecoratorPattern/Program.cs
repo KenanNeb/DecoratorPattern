@@ -11,22 +11,24 @@ interface IDataSource
 
 class FileDataSource : IDataSource
 {
+
+    public string _path;
     protected string _fileName { get; set; }
 
-    public FileDataSource(string fileName)
+    public FileDataSource()
     {
-        _fileName = fileName;
+        _fileName = "Textbox";
+        _path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), _fileName + ".txt");
     }
 
     public void WriteData(string data)
     {
-        File.WriteAllText(_fileName, data);
-
+        File.WriteAllText(_path, data);
     }
     public string ReadData()
     {
 
-        return File.ReadAllText(_fileName);
+        return File.ReadAllText(_path);
 
     }
     class DataSourceDecorator : IDataSource
@@ -53,7 +55,6 @@ class FileDataSource : IDataSource
         public EncryptionDecorator(IDataSource source) : base(source) { }
         public override void WriteData(string data)
         {
-            base.WriteData(data);
             var dataBytes = Encoding.Default.GetBytes(data);
             byte code = 4;
             for (int i = 0; i < dataBytes.Length; i++)
@@ -71,72 +72,126 @@ class FileDataSource : IDataSource
             {
                 dataBytes[i] ^= code;
             }
+            Console.WriteLine("Data sacsesfuly encripted");
             return Encoding.Default.GetString(dataBytes);
         }
     }
     class CompressionDecorator : DataSourceDecorator
     {
         public CompressionDecorator(IDataSource source) : base(source) { }
-        public static byte[] Compress(byte[] input)
+        public string CompressString(string text)
         {
-            using (var result = new MemoryStream())
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Textbox.txt");
+            FileInfo fileToCompress = new(path);
+            using (FileStream originalFileStream = fileToCompress.OpenRead())
             {
-                var lengthBytes = BitConverter.GetBytes(input.Length);
-                result.Write(lengthBytes, 0, 4);
-
-                using (var compressionStream = new GZipStream(result,
-                    CompressionMode.Compress))
+                if ((File.GetAttributes(fileToCompress.FullName) & FileAttributes.Hidden) != FileAttributes.Hidden & fileToCompress.Extension != ".gz")
                 {
-                    compressionStream.Write(input, 0, input.Length);
-                    compressionStream.Flush();
-
-                }
-                return result.ToArray();
-            }
-        }
-        public static byte[] Decompress(byte[] bytes)
-        {
-            using (var memoryStream = new MemoryStream(bytes))
-            {
-
-                using (var outputStream = new MemoryStream())
-                {
-                    using (var decompressStream = new GZipStream(memoryStream, CompressionMode.Decompress))
+                    using (FileStream compressedFileStream = File.Create(fileToCompress.FullName + ".gz"))
                     {
-                        decompressStream.CopyTo(outputStream);
+                        using (GZipStream compressionStream = new GZipStream(compressedFileStream, CompressionMode.Compress))
+                        {
+                            originalFileStream.CopyTo(compressionStream);
+                            Console.WriteLine("Zip file created!");
+                        }
                     }
-                    return outputStream.ToArray();
                 }
             }
+            File.Delete(path);
+            return "";
+        }
+        public string DecompressString()
+        {
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "word.txt"+ ".gz");
+
+            try
+            {
+                FileInfo fileToDecompress = new FileInfo(path);
+                using (FileStream originalFileStream = fileToDecompress.OpenRead())
+                {
+                    string currentFileName = fileToDecompress.FullName;
+                    string newFileName = currentFileName.Remove(currentFileName.Length - fileToDecompress.Extension.Length);
+
+                    using (FileStream decompressedFileStream = File.Create(newFileName))
+                    using (GZipStream decompressionStream = new GZipStream(originalFileStream, CompressionMode.Decompress))
+                        decompressionStream.CopyTo(decompressedFileStream);
+
+                    File.Delete(fileToDecompress.Name);
+                }
+
+            }
+            catch (Exception) { return ""; }
+            return "";
         }
         public override void WriteData(string data)
         {
-            base.WriteData(data);
-            var dataBytes = Encoding.Default.GetBytes(data);
-            var compressedData = Compress(dataBytes);
-            _source.WriteData(Encoding.Default.GetString(compressedData));
-        }
+            CompressString(data);
 
+        }
         public override string ReadData()
         {
-            var data = base.ReadData();
-            var dataBytes = Encoding.Default.GetBytes(data);
-            var decompressedData = Decompress(dataBytes);
-            return Encoding.Default.GetString(decompressedData);
+            DecompressString();
+            return base.ReadData();
 
         }
     }
     class Program
     {
-        static void Main(string[] args)
+         public static void Words()
+         {
+             Console.WriteLine("If you want encript this file press 1!\n");
+             Console.WriteLine("If you want Compress this file press 2!\n");
+             Console.WriteLine("If you want end your work press e!\n");
+         }
+        static void Main()
         {
-            var dataFirst = "Hello neighbor how are you?";
-            var pathFirst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "word.txt");
-            IDataSource dataSource = new FileDataSource(pathFirst);
-            dataSource = new EncryptionDecorator(dataSource);
-            //dataSource = new CompressionDecorator(dataSource);
-            dataSource.WriteData(dataFirst);
-            Console.WriteLine(dataSource.ReadData());
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Ehter the data you want to write your Textbox:\n");
+            var data = Console.ReadLine();
+            IDataSource dataSource = new FileDataSource();
+            dataSource.WriteData(data);
+            Console.WriteLine("\n\nData was successfully written to the file!\n\n");
+            Words();            
+            
+            string? input = null;
+            input = Console.ReadLine();
+            char c = char.Parse(input);
+            while (c != 'e')
+            {                
+                if (c == '1')
+                {
+                   dataSource = new EncryptionDecorator(dataSource);
+                   dataSource.WriteData(data);
+                   Console.WriteLine("Data successfully encripted!");
+                   //Console.ReadKey();
+                }
+                if(c == '2')
+                {
+                    try
+                    {
+                        dataSource = new CompressionDecorator(dataSource);
+                        dataSource.WriteData(data);
+                        Console.WriteLine(dataSource.ReadData());
+                        Console.WriteLine("Data successfully compressed!");
+                        //Console.ReadKey();
+                    }
+                    catch (Exception e)
+                    {
+                        e.ToString();
+                    }
+                  
+                }
+                else
+                {
+                  Console.WriteLine("This option doenot exist please try again!");
+                }
+                Console.ReadKey();
+                Console.Clear();
+                Words();
+                input = String.Empty;
+                input = Console.ReadLine();
+                c = char.Parse(input);
+            }
+            }
         }
     }
-}
